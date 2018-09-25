@@ -14,7 +14,7 @@ public class Server : UdpBase {
         try {
             Logger.LogMessage("Server IP is" + Network.player.ipAddress);
             _listenOn = endPoint;
-            _udp = new UdpClient(_listenOn);
+            Udp = new UdpClient(_listenOn);
         } catch (Exception e) {
             Logger.LogError(e);
             throw;
@@ -24,7 +24,7 @@ public class Server : UdpBase {
 
     public void Reply(byte[] data, IPEndPoint endPoint) {
         try {
-            _udp.Send(data, data.Length, endPoint);
+            Udp.Send(data, data.Length, endPoint);
         } catch (Exception e) {
             Logger.LogError(e);
             throw;

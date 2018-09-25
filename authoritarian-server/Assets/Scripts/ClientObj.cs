@@ -2,24 +2,27 @@
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.UI;
 
 
 public class ClientObj : MonoBehaviour {
 
     private Client _client;
-    [SerializeField] private Text _text;
+    private string _id;
+    private string _msg;
 
     void Start() {
-        _client = Client.ConnectTo(Host.HOST, 32123);
+        _id = Guid.NewGuid().ToString().Substring(0, 12);
+        _client = Client.ConnectTo(Network.player.ipAddress, 32123);
+        _client.Send(Encoding.UTF8.GetBytes(_id));
 
         Task.Factory.StartNew(async () => {
             while (true) {
                 try {
                     var received = await _client.Receive();
-                    string msg = Encoding.UTF8.GetString(received.Data, 0, received.Data.Length);
-                    _text.text = msg;
-                    if (msg == "quit")
+                    _msg = Encoding.UTF8.GetString(received.Data, 0, received.Data.Length);
+                    //debug
+                    //Logger.LogMessage(_msg);
+                    if (_msg == "quit")
                         break;
                 } catch (Exception e) {
                     Logger.LogError(e);
@@ -29,8 +32,13 @@ public class ClientObj : MonoBehaviour {
         });
     }
 
+    private void OnApplicationQuit()
+    {
+        _client.Udp.Close();
+    }
+
     private void LateUpdate() {
-        string msg = String.Format("Client time {0}:{1}:{2}", DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second);
+        string msg = String.Format(_id + " time {0}:{1}:{2}", DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second);
         byte[] data = Encoding.UTF8.GetBytes(msg);
         _client.Send(data);
     }

@@ -2,14 +2,17 @@
 using System.Threading.Tasks;
 
 public abstract class UdpBase {
-    protected UdpClient _udp;
+    public UdpClient Udp {
+        get;
+        protected set;
+    }
 
     protected UdpBase() {
-        _udp = new UdpClient();
+        Udp = new UdpClient();
     }
 
     public async Task<ReceivedData> Receive() {
-        var result = await _udp.ReceiveAsync();
+        var result = await Udp.ReceiveAsync();
         return new ReceivedData() {
             Data = result.Buffer,
             Sender = result.RemoteEndPoint
