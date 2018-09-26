@@ -5,6 +5,8 @@
 [Bb]uilds/
 Assets/AssetStoreTools*
 test_Data/
+[Ss]erver/
+[Cc]lient/
 
 # VS Code
 .vscode

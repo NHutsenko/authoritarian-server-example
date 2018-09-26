@@ -1,9 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using ProtoBuf;
 
 public class ServerObj : MonoBehaviour {
 
@@ -16,36 +17,25 @@ public class ServerObj : MonoBehaviour {
         Task.Factory.StartNew(async () => {
             while (true) {
                 var received = await _server.Receive();
-                var msg = Encoding.UTF8.GetString(received.Data, 0, received.Data.Length);
-                if (msg.Length == 12)
-                {
-
-                    ClientData client = new ClientData(msg, received.Sender);
-                    _clients.Add(client);
-                    Logger.LogMessage("Adding");
-                }
-
-                msg += "copy";
-                foreach (var client in _clients) {
-                    if (client.ClientEndPoint != null) {
-                        _server.Reply(Encoding.UTF8.GetBytes(msg), client.ClientEndPoint);
-                        Logger.LogMessage("Sedned " + msg + " to " + client.ClientId);
+                using (var ms = new MemoryStream(received.Data)) {
+                    PlayerData deserialized = Serializer.Deserialize<PlayerData>(ms);
+                    // checking if client not in list of clients
+                    if (_clients.Find(c => c.ClientId == deserialized.Id) == null) {
+                        _clients.Add(new ClientData(deserialized.Id, received.Sender));
                     }
-                    else
+                    Logger.LogMessage(deserialized.Id + " " + deserialized.PositionX + " " + deserialized.PositionY);
+                    foreach (var client in _clients)
                     {
-                        Logger.LogError(null);
+                       _server.Reply(received.Data, client.ClientEndPoint);
                     }
                 }
-
             }
         });
     }
 
-    private void OnApplicationQuit()
-    {
+    private void OnApplicationQuit() {
         byte[] data = Encoding.UTF8.GetBytes("quit");
-        foreach(var client in _clients)
-        {
+        foreach (var client in _clients) {
             _server.Reply(data, client.ClientEndPoint);
         }
         _server.Udp.Close();
