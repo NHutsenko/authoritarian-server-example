@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,9 +10,12 @@ using ProtoBuf;
 public class ServerObj : MonoBehaviour {
 
     private Server _server;
-    private List<ClientData> _clients;
+    public List<ClientData> Clients { get; private set; }
+
+    public List<UserQuery> UserQuerys { get; private set; }
     void Start() {
-        _clients = new List<ClientData>();
+        Clients = new List<ClientData>();
+        UserQuerys = new List<UserQuery>();
         _server = new Server();
         Logger.LogMessage("Server Started");
         Task.Factory.StartNew(async () => {
@@ -20,13 +24,17 @@ public class ServerObj : MonoBehaviour {
                 using (var ms = new MemoryStream(received.Data)) {
                     PlayerData deserialized = Serializer.Deserialize<PlayerData>(ms);
                     // checking if client not in list of clients
-                    if (_clients.Find(c => c.ClientId == deserialized.Id) == null) {
-                        _clients.Add(new ClientData(deserialized.Id, received.Sender));
+                    if (Clients.Find(c => c.ClientId == deserialized.Id) == null) {
+                        Clients.Add(new ClientData(deserialized.Id, received.Sender));
                     }
-                    Logger.LogMessage(deserialized.Id + " " + deserialized.PositionX + " " + deserialized.PositionY);
-                    foreach (var client in _clients)
+                    UserQuerys.Add(new UserQuery(received.Sender, received.Data));
+                    
+                    foreach (var client in Clients)
                     {
-                       _server.Reply(received.Data, client.ClientEndPoint);
+                        //TODO: add validation data here
+                        PlayerData deserializedPlayerData = DeserializeUserData();
+                        Logger.LogMessage(deserializedPlayerData.Id + deserializedPlayerData.PositionX + deserializedPlayerData.PositionY);
+                        _server.Reply(received.Data, client.ClientEndPoint);
                     }
                 }
             }
@@ -35,10 +43,21 @@ public class ServerObj : MonoBehaviour {
 
     private void OnApplicationQuit() {
         byte[] data = Encoding.UTF8.GetBytes("quit");
-        foreach (var client in _clients) {
+        foreach (var client in Clients) {
             _server.Reply(data, client.ClientEndPoint);
         }
         _server.Udp.Close();
+    }
+
+    private PlayerData DeserializeUserData() {
+        UserQuery currentQuery = UserQuerys.First();
+        UserQuerys.Remove(currentQuery);
+        PlayerData deserialized;
+        using (MemoryStream ms = new MemoryStream(currentQuery.QueryData)) {
+            deserialized = Serializer.Deserialize<PlayerData>(ms);
+        }
+
+        return deserialized;
     }
 
     public class ClientData {
@@ -48,6 +67,18 @@ public class ServerObj : MonoBehaviour {
         public ClientData(string id, IPEndPoint clientEndPoint) {
             ClientId = id;
             ClientEndPoint = clientEndPoint;
+        }
+    }
+
+    public class UserQuery {
+        public IPEndPoint UserEndPoint { get; private set; }
+        public byte[] QueryData { get; private set; }
+
+        public UserQuery(IPEndPoint userEndPoint, byte[] data) {
+            if (userEndPoint != null) {
+                UserEndPoint = userEndPoint;
+                QueryData = data;
+            }
         }
     }
 }
