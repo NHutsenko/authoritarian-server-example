@@ -1,15 +1,27 @@
 ﻿using ProtoBuf;
-using UnityEngine;
+
 
 [ProtoContract]
-public class PlayerData
+public class ClientDataRequest
+{
+    [ProtoMember(1)]
+    public string Id { get; set; }
+    [ProtoMember(2)]
+    public int Command { get; set; }
+}
+
+[ProtoContract]
+public class ServerDataRespond
 {
     [ProtoMember(1)]
     public string Id { get; set; }
 
     [ProtoMember(2)]
-    public float PositionX { get; set; }
+    public int Command { get; set; }
 
     [ProtoMember(3)]
-    public float PositionY;
+    public float PositionX { get; set; }
+
+    [ProtoMember(4)]
+    public float PositionY { get; set; }
 }
