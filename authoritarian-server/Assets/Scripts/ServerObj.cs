@@ -11,9 +11,9 @@ public class ServerObj : MonoBehaviour {
 
     private Server _server;
     public List<ClientData> Clients { get; private set; }
-
     public List<UserQuery> UserQuerys { get; private set; }
-    void Start() {
+
+    private void Start() {
         Clients = new List<ClientData>();
         UserQuerys = new List<UserQuery>();
         _server = new Server();
@@ -31,8 +31,8 @@ public class ServerObj : MonoBehaviour {
     private void OnApplicationQuit() {
         byte[] data;
         using (var ms = new MemoryStream()) {
-            ServerDataRespond stopServer = new ServerDataRespond() {
-                Command = (int)Command.Disconnect,
+            var stopServer = new ServerDataRespond() {
+                Command = Command.Disconnect,
             };
             Serializer.Serialize(ms, stopServer);
             data = ms.ToArray();
@@ -44,91 +44,159 @@ public class ServerObj : MonoBehaviour {
     }
 
     private void Respond() {
-        UserQuery currentQuery = UserQuerys.First();
+        var currentQuery = UserQuerys.First();
         UserQuerys.Remove(currentQuery);
         ClientDataRequest deserialized;
         using (var ms = new MemoryStream(currentQuery.QueryData)) {
             deserialized = Serializer.Deserialize<ClientDataRequest>(ms);
-            Logger.LogMessage(deserialized.Id + (Command)deserialized.Command);
+            Logger.LogMessage(deserialized.Id + deserialized.Command);
         }
-        
+
 
         byte[] data = null;
         switch (deserialized.Command) {
-            case (int)Command.Connect:
+            case Command.Connect:
                 using (var ms = new MemoryStream()) {
-                    Clients.Add(new ClientData(deserialized.Id, currentQuery.UserEndPoint));
-                    ServerDataRespond respond = new ServerDataRespond() {
+                    foreach (var connectedClient in Clients) {
+                        using (var memStream = new MemoryStream()) {
+                            var toSend = new ServerDataRespond {
+                                Id = connectedClient.ClientId,
+                                Command = Command.AddExistPlayer,
+                                PositionX = connectedClient.Position.x,
+                                PositionY = connectedClient.Position.y
+                            };
+
+                            Serializer.Serialize(memStream, toSend);
+                            _server.Reply(memStream.ToArray(), currentQuery.UserEndPoint);
+                        }
+                    }
+
+                    Clients.Add(new ClientData(deserialized.Id, currentQuery.UserEndPoint, new Vector2(0, 0)));
+                    var respond = new ServerDataRespond() {
                         Id = deserialized.Id,
-                        Command = (int)Command.Connect
+                        Command = (int)Command.Connect,
+                        PositionX = 0,
+                        PositionY = 0
                     };
+
                     Serializer.Serialize(ms, respond);
                     data = ms.ToArray();
                 }
                 break;
-            case (int)Command.Disconnect:
+            case Command.Disconnect:
                 using (var ms = new MemoryStream()) {
-                    ServerDataRespond respond = new ServerDataRespond() {
+                    var respond = new ServerDataRespond() {
                         Id = deserialized.Id,
-                        Command = (int)Command.Disconnect
+                        Command = Command.Disconnect
                     };
                     Serializer.Serialize(ms, respond);
                     data = ms.ToArray();
-                    ClientData client = Clients.Find(c => c.ClientId == deserialized.Id);
+                    var client = Clients.Find(c => c.ClientId == deserialized.Id);
                     Clients.Remove(client);
                 }
                 break;
-            case (int)Command.PlayerMoveTop:
+            case Command.PlayerMoveTop:
                 using (var ms = new MemoryStream()) {
-                    ServerDataRespond respond = new ServerDataRespond() {
+                    var client = Clients.Find(c => c.ClientId == deserialized.Id);
+                    var clientIndex = Clients.IndexOf(client);
+
+                    Clients[clientIndex].Position = new Vector2(Clients[clientIndex].Position.x,
+                        Clients[clientIndex].Position.y + 0.2f);
+
+                    var respond = new ServerDataRespond() {
                         Id = deserialized.Id,
-                        Command = (int)Command.PlayerMoveTop,
-                        PositionX = 0,
-                        PositionY = 0
+                        Command = Command.PlayerMove,
+                        PositionX = Clients[clientIndex].Position.x,
+                        PositionY = Clients[clientIndex].Position.y
                     };
                     Serializer.Serialize(ms, respond);
                     data = ms.ToArray();
                 }
                 break;
-            case (int)Command.PlayerMoveBot:
+            case Command.PlayerMoveBot:
                 using (var ms = new MemoryStream()) {
-                    ServerDataRespond respond = new ServerDataRespond() {
+                    var client = Clients.Find(c => c.ClientId == deserialized.Id);
+                    var clientIndex = Clients.IndexOf(client);
+
+                    Clients[clientIndex].Position = new Vector2(Clients[clientIndex].Position.x,
+                        Clients[clientIndex].Position.y - 0.2f);
+
+                    var respond = new ServerDataRespond() {
                         Id = deserialized.Id,
-                        Command = (int)Command.PlayerMoveBot,
-                        PositionX = 0,
-                        PositionY = 0
+                        Command = Command.PlayerMove,
+                        PositionX = Clients[clientIndex].Position.x,
+                        PositionY = Clients[clientIndex].Position.y
+                    };
+                    Serializer.Serialize(ms, respond);
+                    data = ms.ToArray();
+                }
+                break;
+            case Command.PlayerMoveLeft:
+                using (var ms = new MemoryStream()) {
+                    var client = Clients.Find(c => c.ClientId == deserialized.Id);
+                    var clientIndex = Clients.IndexOf(client);
+
+                    Clients[clientIndex].Position = new Vector2(Clients[clientIndex].Position.x - 0.2f,
+                        Clients[clientIndex].Position.y);
+
+                    var respond = new ServerDataRespond() {
+                        Id = deserialized.Id,
+                        Command = Command.PlayerMove,
+                        PositionX = Clients[clientIndex].Position.x,
+                        PositionY = Clients[clientIndex].Position.y
+                    };
+                    Serializer.Serialize(ms, respond);
+                    data = ms.ToArray();
+                }
+                break;
+            case Command.PlayerMoveRight:
+                using (var ms = new MemoryStream()) {
+                    var client = Clients.Find(c => c.ClientId == deserialized.Id);
+                    var clientIndex = Clients.IndexOf(client);
+
+                    Clients[clientIndex].Position = new Vector2(Clients[clientIndex].Position.x + 0.2f,
+                        Clients[clientIndex].Position.y);
+
+                    var respond = new ServerDataRespond() {
+                        Id = deserialized.Id,
+                        Command = Command.PlayerMove,
+                        PositionX = Clients[clientIndex].Position.x,
+                        PositionY = Clients[clientIndex].Position.y
                     };
                     Serializer.Serialize(ms, respond);
                     data = ms.ToArray();
                 }
                 break;
         }
-        if (Clients.Count > 0)
-            foreach (var client in Clients)
-            {
-                _server.Reply(data, client.ClientEndPoint);
-            }
+
+        if (Clients.Count <= 0)
+            return;
+        foreach (var client in Clients) {
+            _server.Reply(data, client.ClientEndPoint);
+        }
     }
 
     public class ClientData {
-        public string ClientId { get; private set; }
-        public IPEndPoint ClientEndPoint { get; private set; }
+        public string ClientId { get; }
+        public IPEndPoint ClientEndPoint { get; }
+        public Vector2 Position { get; set; }
 
-        public ClientData(string id, IPEndPoint clientEndPoint) {
+        public ClientData(string id, IPEndPoint clientEndPoint, Vector2 position) {
             ClientId = id;
             ClientEndPoint = clientEndPoint;
+            Position = position;
         }
     }
 
     public class UserQuery {
-        public IPEndPoint UserEndPoint { get; private set; }
-        public byte[] QueryData { get; private set; }
+        public IPEndPoint UserEndPoint { get; }
+        public byte[] QueryData { get; }
 
         public UserQuery(IPEndPoint userEndPoint, byte[] data) {
-            if (userEndPoint != null) {
-                UserEndPoint = userEndPoint;
-                QueryData = data;
-            }
+            if (userEndPoint == null)
+                return;
+            UserEndPoint = userEndPoint;
+            QueryData = data;
         }
     }
 }

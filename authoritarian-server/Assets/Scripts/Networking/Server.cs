@@ -5,21 +5,19 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 
 public class Server : UdpBase {
-    private IPEndPoint _listenOn;
-    private const int PORT = 32123;
+    private const int Port = 32123;
 
-    public Server() : this(new IPEndPoint(IPAddress.Parse(Network.player.ipAddress), PORT)) { }
+    public Server() : this(new IPEndPoint(IPAddress.Parse(Network.player.ipAddress), Port)) { }
 
-    public Server(IPEndPoint endPoint) {
+    public Server(IPEndPoint endPoint)
+    {
         try {
             Logger.LogMessage("Server IP is" + Network.player.ipAddress);
-            _listenOn = endPoint;
-            Udp = new UdpClient(_listenOn);
+            Udp = new UdpClient(endPoint);
         } catch (Exception e) {
             Logger.LogError(e);
             throw;
         }
-
     }
 
     public void Reply(byte[] data, IPEndPoint endPoint) {

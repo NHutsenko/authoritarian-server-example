@@ -1,27 +1,32 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour {
 
-    [SerializeField] private GameObject _playerPrefab;
-
-    void Start() {
+    private void Start() {
         ClientObj.Instantce.ConnectToServer();
-        Instantiate(_playerPrefab);
     }
 
-    void LateUpdate() {
+    private void LateUpdate() {
         if (Input.GetKeyDown(KeyCode.UpArrow)) {
             ClientObj.Instantce.SendRequest(Command.PlayerMoveTop);
-
         }
+
         if (Input.GetKeyDown(KeyCode.DownArrow)) {
             ClientObj.Instantce.SendRequest(Command.PlayerMoveBot);
         }
+
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) {
+            ClientObj.Instantce.SendRequest(Command.PlayerMoveLeft);
+        }
+
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            ClientObj.Instantce.SendRequest(Command.PlayerMoveRight);
+        }
     }
 
-    void OnApplicationQuit() {
+    private void OnApplicationQuit() {
         ClientObj.Instantce.Disconnect();
     }
 }

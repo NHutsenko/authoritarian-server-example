@@ -7,7 +7,7 @@ public class ClientDataRequest
     [ProtoMember(1)]
     public string Id { get; set; }
     [ProtoMember(2)]
-    public int Command { get; set; }
+    public Command Command { get; set; }
 }
 
 [ProtoContract]
@@ -17,7 +17,7 @@ public class ServerDataRespond
     public string Id { get; set; }
 
     [ProtoMember(2)]
-    public int Command { get; set; }
+    public Command Command { get; set; }
 
     [ProtoMember(3)]
     public float PositionX { get; set; }

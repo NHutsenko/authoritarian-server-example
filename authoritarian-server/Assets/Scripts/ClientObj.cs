@@ -1,20 +1,29 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using ProtoBuf;
+using UnityEngine.UI;
 
 public class ClientObj : MonoBehaviour {
 
     private Client _client;
     private string _id;
-    private CancellationTokenSource _stopReceiveToken;
+    private List<byte[]> _serverResponds;
+    [SerializeField]
+    private PlayerController _player;
+
+    [SerializeField]
+    private PlayersManager _playersManager;
 
     public static ClientObj Instantce { get; private set; }
 
-    void Awake() {
+    private void Awake() {
         Instantce = this;
+        _serverResponds = new List<byte[]>();
     }
 
     public void ConnectToServer() {
@@ -28,16 +37,59 @@ public class ClientObj : MonoBehaviour {
             while (true) {
                 try {
                     var received = await _client.Receive();
-                    using (var ms = new MemoryStream(received.Data)) {
-                        var deserialized = Serializer.Deserialize<ServerDataRespond>(ms);
-                        Logger.LogMessage(deserialized.Id + (Command)deserialized.Command);
-                    }
+                    _serverResponds.Add(received.Data);
+
+                    DeserializeRespond();
                 } catch (Exception e) {
                     Logger.LogError(e);
                     throw;
                 }
             }
         });
+    }
+
+    private void DeserializeRespond() {
+        if (_serverResponds.Count > 0) {
+            var data = _serverResponds.First();
+            _serverResponds.Remove(data);
+
+            using (var ms = new MemoryStream(data)) {
+                var deserialized = Serializer.Deserialize<ServerDataRespond>(ms);
+
+                switch (deserialized.Command) {
+                    case Command.Connect:
+                        _playersManager.ClientActions.Add(new PlayersManager.ClientAction {
+                            Id = deserialized.Id,
+                            Action = Command.Connect,
+                            Position = new Vector2(deserialized.PositionX, deserialized.PositionY)
+                        });
+                        break;
+                    case Command.Disconnect:
+                        _playersManager.ClientActions.Add(new PlayersManager.ClientAction {
+                            Id = deserialized.Id,
+                            Action = Command.Disconnect
+                        });
+                        Logger.LogMessage(deserialized.Id + " disconnected");
+                        break;
+                    case Command.PlayerMove:
+                        Logger.LogMessage(deserialized.PositionX + deserialized.PositionY);
+                        _playersManager.ClientActions.Add(new PlayersManager.ClientAction {
+                            Id = deserialized.Id,
+                            Action = Command.PlayerMove,
+                            Position = new Vector2(deserialized.PositionX, deserialized.PositionY)
+                        });
+                        break;
+                    case Command.AddExistPlayer:
+                        _playersManager.ClientActions.Add(new PlayersManager.ClientAction
+                        {
+                            Id = deserialized.Id,
+                            Action = Command.AddExistPlayer,
+                            Position = new Vector2(deserialized.PositionX, deserialized.PositionY)
+                        });
+                        break;
+                }
+            }
+        }
     }
 
     public void Disconnect() {
@@ -48,7 +100,7 @@ public class ClientObj : MonoBehaviour {
     public void SendRequest(Command command) {
         var requestData = new ClientDataRequest() {
             Id = _id,
-            Command = (int)command
+            Command = command
         };
         byte[] data;
 
@@ -58,4 +110,6 @@ public class ClientObj : MonoBehaviour {
         }
         _client.Send(data);
     }
+
+
 }
