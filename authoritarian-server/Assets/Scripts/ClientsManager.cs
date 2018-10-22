@@ -5,22 +5,27 @@ using System.Net;
 using ProtoBuf;
 using UnityEngine;
 
-public class ClentsManager : MonoBehaviour {
+public class ClientsManager : MonoBehaviour {
 
     public List<ClientData> Clients { get; private set; }
 
-    private void Start () {
-		Clients = new List<ClientData>();
-	}
-	
-	private void Update () {
-		Respond();
-	}
+    public static ClientsManager Instance { get; private set; }
 
-    private void Respond()
-    {
+    private void Awake() {
+        Instance = this;
+    }
+
+    private void Start() {
+        Clients = new List<ClientData>();
+    }
+
+    private void Update() {
+        Respond();
+    }
+
+    private void Respond() {
         var query = ServerObj.Instance.GetQuery();
-        if(query == null)
+        if (query == null)
             return;
 
         Packet<ClientDataRequest> deserialized;
@@ -46,7 +51,7 @@ public class ClentsManager : MonoBehaviour {
                                 };
 
                                 Serializer.Serialize(memStream, toSend);
-                               ServerObj.Instance.SendRespond(toSend, query.UserEndPoint);
+                                ServerObj.Instance.SendRespond(toSend, query.UserEndPoint);
                             }
                         }
                     }
