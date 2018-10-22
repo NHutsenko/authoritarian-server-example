@@ -2,26 +2,31 @@
 
 
 [ProtoContract]
-public class ClientDataRequest
+public class ClientDataRequest : IPlayerData
 {
     [ProtoMember(1)]
     public string Id { get; set; }
-    [ProtoMember(2)]
-    public Command Command { get; set; }
 }
 
 [ProtoContract]
-public class ServerDataRespond
+public class ServerDataRespond : IPlayerData
 {
     [ProtoMember(1)]
     public string Id { get; set; }
 
     [ProtoMember(2)]
-    public Command Command { get; set; }
-
-    [ProtoMember(3)]
     public float PositionX { get; set; }
 
-    [ProtoMember(4)]
+    [ProtoMember(3)]
     public float PositionY { get; set; }
+}
+
+[ProtoContract]
+public class Packet<T> where T : IPlayerData
+{
+    [ProtoMember(1)]
+    public int OpCode { get; set; }
+
+    [ProtoMember(2)]
+    public T Data { get; set; }
 }

@@ -9,20 +9,20 @@ public class PlayerController : MonoBehaviour {
 
     private void LateUpdate() {
         if (Input.GetKeyDown(KeyCode.UpArrow)) {
-            ClientObj.Instantce.SendRequest(Command.PlayerMoveTop);
+            ClientObj.Instantce.SendRequest((int)Command.PlayerMoveTop);
         }
 
         if (Input.GetKeyDown(KeyCode.DownArrow)) {
-            ClientObj.Instantce.SendRequest(Command.PlayerMoveBot);
+            ClientObj.Instantce.SendRequest((int)Command.PlayerMoveBot);
         }
 
         if (Input.GetKeyDown(KeyCode.LeftArrow)) {
-            ClientObj.Instantce.SendRequest(Command.PlayerMoveLeft);
+            ClientObj.Instantce.SendRequest((int)Command.PlayerMoveLeft);
         }
 
         if (Input.GetKeyDown(KeyCode.RightArrow))
         {
-            ClientObj.Instantce.SendRequest(Command.PlayerMoveRight);
+            ClientObj.Instantce.SendRequest((int)Command.PlayerMoveRight);
         }
     }
 

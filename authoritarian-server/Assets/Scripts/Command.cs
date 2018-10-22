@@ -1,9 +1,9 @@
 ﻿public enum Command {
-    Connect = 0,
-    Disconnect = 1,
-    PlayerMoveTop = 2,
-    PlayerMoveBot = 3,
-    PlayerMoveLeft = 4,
-    PlayerMoveRight = 5,
-    PlayerMove = 6,
-    AddExistPlayer = 7 }
+    Connect = 100,
+    Disconnect = 101,
+    PlayerMoveTop = 120,
+    PlayerMoveBot = 122,
+    PlayerMoveLeft = 124,
+    PlayerMoveRight = 126,
+    PlayerMove = 128,
+    AddExistPlayer = 103 }

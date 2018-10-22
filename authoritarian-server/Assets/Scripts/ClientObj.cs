@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using ProtoBuf;
-using UnityEngine.UI;
 
 public class ClientObj : MonoBehaviour {
 
@@ -19,7 +19,11 @@ public class ClientObj : MonoBehaviour {
     [SerializeField]
     private PlayersManager _playersManager;
 
+    private Thread _listenThread;
+
     public static ClientObj Instantce { get; private set; }
+
+    private bool isAlive = false;
 
     private void Awake() {
         Instantce = this;
@@ -27,80 +31,53 @@ public class ClientObj : MonoBehaviour {
     }
 
     public void ConnectToServer() {
+        isAlive = true;
         _id = Guid.NewGuid().ToString().Substring(0, 12);
-        _client = Client.ConnectTo(Network.player.ipAddress, 32123);
+        _client = Client.ConnectTo(Host.HOST, 32123);
 
-        SendRequest(Command.Connect);
-        Logger.LogMessage("Request sended");
+        _listenThread = new Thread(Listen);
+        _listenThread.Start();
 
-        Task.Factory.StartNew(async () => {
-            while (true) {
-                try {
-                    var received = await _client.Receive();
-                    _serverResponds.Add(received.Data);
-
-                    DeserializeRespond();
-                } catch (Exception e) {
-                    Logger.LogError(e);
-                    throw;
-                }
-            }
-        });
+        SendRequest((int)Command.Connect);
+        Logger.LogMessage("Request sended");  
     }
 
-    private void DeserializeRespond() {
-        if (_serverResponds.Count > 0) {
-            var data = _serverResponds.First();
-            _serverResponds.Remove(data);
+    private async void Listen() {
+        while (isAlive) {
+            try {
+                var received = await _client.Receive();
+                _serverResponds.Add(received.Data);
 
-            using (var ms = new MemoryStream(data)) {
-                var deserialized = Serializer.Deserialize<ServerDataRespond>(ms);
-
-                switch (deserialized.Command) {
-                    case Command.Connect:
-                        _playersManager.ClientActions.Add(new PlayersManager.ClientAction {
-                            Id = deserialized.Id,
-                            Action = Command.Connect,
-                            Position = new Vector2(deserialized.PositionX, deserialized.PositionY)
-                        });
-                        break;
-                    case Command.Disconnect:
-                        _playersManager.ClientActions.Add(new PlayersManager.ClientAction {
-                            Id = deserialized.Id,
-                            Action = Command.Disconnect
-                        });
-                        Logger.LogMessage(deserialized.Id + " disconnected");
-                        break;
-                    case Command.PlayerMove:
-                        Logger.LogMessage(deserialized.PositionX + deserialized.PositionY);
-                        _playersManager.ClientActions.Add(new PlayersManager.ClientAction {
-                            Id = deserialized.Id,
-                            Action = Command.PlayerMove,
-                            Position = new Vector2(deserialized.PositionX, deserialized.PositionY)
-                        });
-                        break;
-                    case Command.AddExistPlayer:
-                        _playersManager.ClientActions.Add(new PlayersManager.ClientAction
-                        {
-                            Id = deserialized.Id,
-                            Action = Command.AddExistPlayer,
-                            Position = new Vector2(deserialized.PositionX, deserialized.PositionY)
-                        });
-                        break;
-                }
+            } catch (Exception e) {
+                Logger.LogError(e);
+                throw;
             }
         }
     }
 
+    public byte[] GetRespond()
+    {
+        if (_serverResponds.Count <= 0)
+            return null;
+        var data = _serverResponds.First();
+        _serverResponds.Remove(data);
+
+        return data;
+    }
+
     public void Disconnect() {
-        SendRequest(Command.Disconnect);
+        SendRequest((int)Command.Disconnect);
+        isAlive = false;
+        _listenThread.Abort();
         _client.Udp.Close();
     }
 
-    public void SendRequest(Command command) {
-        var requestData = new ClientDataRequest() {
-            Id = _id,
-            Command = command
+    public void SendRequest(int opCode)
+    {
+        var requestData = new Packet<ClientDataRequest>
+        {
+            OpCode = opCode,
+            Data = new ClientDataRequest { Id = _id }
         };
         byte[] data;
 
@@ -110,6 +87,4 @@ public class ClientObj : MonoBehaviour {
         }
         _client.Send(data);
     }
-
-
 }

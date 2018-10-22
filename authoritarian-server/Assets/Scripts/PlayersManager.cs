@@ -1,7 +1,9 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using ProtoBuf;
 using UnityEngine;
+
 
 public class PlayersManager : MonoBehaviour {
 
@@ -19,30 +21,45 @@ public class PlayersManager : MonoBehaviour {
     }
 
 
-    private void MakeAction() {
-        if (ClientActions.Count <= 0)
+    private void MakeAction()
+    {
+        var data = ClientObj.Instantce.GetRespond();
+        
+        if(data == null) 
             return;
-        var clientAction = ClientActions.First();
-        ClientActions.Remove(clientAction);
-        switch (clientAction.Action) {
-            case Command.Connect:
-                _clients.Add(new Clients(clientAction.Id, Instantiate(_playerPrefab)));
-                _clients.Last().PlayerGameObject.transform.position = clientAction.Position;
-                break;
-            case Command.Disconnect:
-                var toRemove = GetClientIndex(clientAction.Id);
-                Destroy(_clients[toRemove].PlayerGameObject);
-                _clients.Remove(_clients[toRemove]);
-                break;
-            case Command.PlayerMove:
-                var toMove = GetClientIndex(clientAction.Id);
-                _clients[toMove].PlayerGameObject.transform.position = clientAction.Position;
-                break;
-            case Command.AddExistPlayer:
-                _clients.Add(new Clients(clientAction.Id, Instantiate(_playerPrefab)));
-                var toChangePosition = GetClientIndex(clientAction.Id);
-                _clients[toChangePosition].PlayerGameObject.transform.position = clientAction.Position;
-                break;
+
+        using (var ms = new MemoryStream(data)) {
+            var deserialized = Serializer.Deserialize<Packet<ServerDataRespond>>(ms);
+
+
+            switch (deserialized.OpCode) {
+                case (int)Command.Connect:
+                    _clients.Add(new Clients(deserialized.Data.Id, Instantiate(_playerPrefab)));
+                    _clients.Last().PlayerGameObject.transform.position = new Vector2(deserialized.Data.PositionX,
+                        deserialized.Data.PositionY);
+                    Logger.LogMessage(deserialized.Data.Id +" connected");
+                    break;
+                case (int)Command.Disconnect:
+                    var toRemove = GetClientIndex(deserialized.Data.Id);
+                    Destroy(_clients[toRemove].PlayerGameObject);
+                    _clients.Remove(_clients[toRemove]);
+                    Logger.LogMessage(deserialized.Data.Id + " disconnected");
+                    break;
+                case (int)Command.PlayerMove:
+                    Logger.LogMessage(deserialized.Data.Id);
+                    var toMove = GetClientIndex(deserialized.Data.Id);
+                    
+                    _clients[toMove].PlayerGameObject.transform.position = new Vector2(deserialized.Data.PositionX,
+                        deserialized.Data.PositionY);
+                    Logger.LogMessage(deserialized.Data.PositionX + " " + deserialized.Data.PositionY);
+                    break;
+                case (int)Command.AddExistPlayer:
+                    _clients.Add(new Clients(deserialized.Data.Id, Instantiate(_playerPrefab)));
+                    var toChangePosition = GetClientIndex(deserialized.Data.Id);
+                    _clients[toChangePosition].PlayerGameObject.transform.position = new Vector2(deserialized.Data.PositionX,
+                        deserialized.Data.PositionY);
+                    break;
+            }
         }
     }
 

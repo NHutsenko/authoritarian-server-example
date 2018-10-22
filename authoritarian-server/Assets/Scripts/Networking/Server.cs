@@ -7,12 +7,12 @@ using UnityEngine;
 public class Server : UdpBase {
     private const int Port = 32123;
 
-    public Server() : this(new IPEndPoint(IPAddress.Parse(Network.player.ipAddress), Port)) { }
+    public Server() : this(new IPEndPoint(IPAddress.Parse(Host.HOST), Port)) { }
 
     public Server(IPEndPoint endPoint)
     {
         try {
-            Logger.LogMessage("Server IP is" + Network.player.ipAddress);
+            Logger.LogMessage("Server IP is" + Dns.GetHostName());
             Udp = new UdpClient(endPoint);
         } catch (Exception e) {
             Logger.LogError(e);
